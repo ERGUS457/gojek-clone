@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gojek Dispatch & Fleet Admin Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Socket.IO CDN -->
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    .custom-leaflet-marker {
+      background: transparent;
+      border: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-900 min-h-screen flex flex-col">
+
+  <!-- Admin Top Navbar -->
+  <header class="bg-gray-900 text-white px-6 py-4 flex items-center justify-between shadow-md">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-full bg-[#00AA13] flex items-center justify-center font-black text-xl shadow">
+        G
+      </div>
+      <div>
+        <h1 class="text-lg font-black tracking-tight flex items-center space-x-2">
+          <span>Gojek Dispatch Control Center</span>
+          <span class="text-[10px] font-bold bg-[#00AA13] text-white px-2 py-0.5 rounded-full uppercase tracking-wider">Live</span>
+        </h1>
+        <p class="text-xs text-gray-400">Monitoring Armada & Algoritma Dispatch Realtime (Jakarta Area)</p>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="flex items-center space-x-3">
+      <button onclick="resetDemoData()" class="bg-gray-800 hover:bg-red-900/60 text-red-300 border border-red-700/50 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5">
+        <i class="ph-bold ph-arrows-counter-clockwise"></i>
+        <span>Reset Data Demo</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Metric Summary Cards -->
+  <div class="max-w-7xl w-full mx-auto px-6 py-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
+      <div class="flex items-center justify-between text-gray-500 mb-1">
+        <span class="text-xs font-bold uppercase tracking-wider">Total Nilai Transaksi (GMV)</span>
+        <i class="ph-bold ph-currency-circle-dollar text-xl text-[#00AA13]"></i>
+      </div>
+      <h3 class="text-2xl font-black text-gray-900" id="statGmv">Rp 0</h3>
+      <span class="text-[11px] text-green-600 font-semibold mt-1 inline-block">Realtime terakumulasi</span>
+    </div>
+
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
+      <div class="flex items-center justify-between text-gray-500 mb-1">
+        <span class="text-xs font-bold uppercase tracking-wider">Armada Online</span>
+        <i class="ph-bold ph-steering-wheel text-xl text-blue-600"></i>
+      </div>
+      <h3 class="text-2xl font-black text-gray-900" id="statOnlineDrivers">0</h3>
+      <span class="text-[11px] text-gray-500 font-semibold mt-1 inline-block" id="statFleetBreakdown">0 GoRide • 0 GoCar</span>
+    </div>
+
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
+      <div class="flex items-center justify-between text-gray-500 mb-1">
+        <span class="text-xs font-bold uppercase tracking-wider">Pesanan Berjalan</span>
+        <i class="ph-bold ph-hourglass-high text-xl text-orange-500"></i>
+      </div>
+      <h3 class="text-2xl font-black text-gray-900" id="statActiveOrders">0</h3>
+      <span class="text-[11px] text-orange-600 font-semibold mt-1 inline-block">Searching / In-Trip</span>
+    </div>
+
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
+      <div class="flex items-center justify-between text-gray-500 mb-1">
+        <span class="text-xs font-bold uppercase tracking-wider">Total Trip Selesai</span>
+        <i class="ph-bold ph-check-circle text-xl text-emerald-600"></i>
+      </div>
+      <h3 class="text-2xl font-black text-gray-900" id="statCompletedTrips">0</h3>
+      <span class="text-[11px] text-emerald-600 font-semibold mt-1 inline-block">Sukses 100%</span>
+    </div>
+  </div>
+
+  <!-- Main Body: Map & Real-time Logs -->
+  <div class="max-w-7xl w-full mx-auto px-6 pb-6 flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    
+    <!-- Map: 2 Columns on LG -->
+    <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col" style="min-height: 520px;">
+      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i class="ph-bold ph-map-trifold text-[#00AA13] text-lg"></i>
+          <h2 class="text-sm font-extrabold text-gray-800">Peta Sebaran Armada (Jakarta Live)</h2>
+        </div>
+        <div class="flex items-center space-x-3 text-xs">
+          <span class="flex items-center space-x-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#00AA13]"></span>
+            <span>Tersedia</span>
+          </span>
+          <span class="flex items-center space-x-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+            <span>Offering</span>
+          </span>
+          <span class="flex items-center space-x-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+            <span>In-Trip</span>
+          </span>
+        </div>
+      </div>
+      <div id="adminMap" class="flex-1 w-full"></div>
+    </div>
+
+    <!-- Live Event & Orders Feed: 1 Column -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i class="ph-bold ph-broadcast text-[#00AA13] text-lg"></i>
+          <h2 class="text-sm font-extrabold text-gray-800">Dispatch Log & Order Stream</h2>
+        </div>
+        <span class="w-2 h-2 rounded-full bg-[#00AA13] animate-ping"></span>
+      </div>
+
+      <div id="eventLogs" class="flex-1 p-4 overflow-y-auto space-y-3 text-xs max-h-[520px]">
+        <div class="text-center py-10 text-gray-400">
+          <i class="ph-bold ph-receipt text-3xl mb-2 block text-gray-300"></i>
+          <span>Menunggu aktivitas pesanan atau armada...</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/audio.js"></script>
+  <script src="/locations.js"></script>
+  <script src="/map-icons.js"></script>
+  <script src="/admin.js"></script>
+</body>
+</html>

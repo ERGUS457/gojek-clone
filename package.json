@@ -1,0 +1,28 @@
+{
+  "name": "gojek-clone",
+  "version": "1.0.0",
+  "description": "Gojek Clone - Ride Hailing MVP with Realtime Driver Tracking & Dispatch",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "gojek",
+    "ride-hailing",
+    "socketio",
+    "express",
+    "leaflet"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.1",
+    "pg": "^8.23.1",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.0.3"
+  }
+}

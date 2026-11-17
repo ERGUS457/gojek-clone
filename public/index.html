@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gojek Super-App Simulator & Ride-Hailing Platform</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    /* Smartphone Mockup Frame Styling */
+    .phone-mockup {
+      width: 390px;
+      height: 800px;
+      border-radius: 44px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 0 10px #1e293b, 0 0 0 12px #334155;
+      overflow: hidden;
+      position: relative;
+      background: white;
+    }
+    .phone-notch {
+      width: 130px;
+      height: 24px;
+      background: #1e293b;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .phone-camera {
+      width: 10px;
+      height: 10px;
+      background: #0f172a;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 font-sans text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Master Top Navigation Bar -->
+  <nav class="bg-slate-900 border-b border-slate-800 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-full bg-[#00AA13] flex items-center justify-center font-black text-white text-xl shadow-lg shadow-green-500/20">
+        <div class="w-5 h-5 rounded-full bg-white flex items-center justify-center">
+          <div class="w-2 h-2 rounded-full bg-[#00AA13]"></div>
+        </div>
+      </div>
+      <div>
+        <h1 class="text-base font-extrabold tracking-tight flex items-center space-x-2">
+          <span>Gojek Super-App Ride-Hailing Platform</span>
+          <span class="text-[10px] font-bold bg-[#00AA13] text-white px-2 py-0.5 rounded-full uppercase">Full MVP</span>
+        </h1>
+        <p class="text-xs text-slate-400">Node.js • Socket.IO Realtime Telemetry • Leaflet Map • Dual Device Simulator</p>
+      </div>
+    </div>
+
+    <!-- View Switcher Tabs -->
+    <div class="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700/80 text-xs font-bold">
+      <button onclick="switchView('split')" id="btnTabSplit" class="tab-btn px-3.5 py-1.5 rounded-lg bg-[#00AA13] text-white transition flex items-center space-x-1.5 shadow">
+        <i class="ph-bold ph-columns text-sm"></i>
+        <span>Dual Simulator (Customer + Driver)</span>
+      </button>
+      <button onclick="switchView('customer')" id="btnTabCustomer" class="tab-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white transition flex items-center space-x-1.5">
+        <i class="ph-bold ph-user text-sm"></i>
+        <span>Pelanggan</span>
+      </button>
+      <button onclick="switchView('driver')" id="btnTabDriver" class="tab-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white transition flex items-center space-x-1.5">
+        <i class="ph-bold ph-steering-wheel text-sm"></i>
+        <span>Mitra Driver</span>
+      </button>
+      <button onclick="switchView('admin')" id="btnTabAdmin" class="tab-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white transition flex items-center space-x-1.5">
+        <i class="ph-bold ph-chart-line-up text-sm"></i>
+        <span>Admin Dispatch</span>
+      </button>
+    </div>
+
+    <!-- Quick Direct Links & Guide -->
+    <div class="flex items-center space-x-2 text-xs">
+      <button onclick="toggleGuideModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 transition flex items-center space-x-1.5">
+        <i class="ph-bold ph-lightbulb text-yellow-400"></i>
+        <span>Cara Uji Coba</span>
+      </button>
+      <a href="/admin.html" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 transition flex items-center space-x-1">
+        <span>Admin Window</span>
+        <i class="ph-bold ph-arrow-square-out text-sm"></i>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Interactive Workspace Viewports -->
+  <main class="flex-1 p-6 flex items-center justify-center relative overflow-x-auto">
+    
+    <!-- VIEW 1: Dual Simulator (Side-by-Side Smartphones) -->
+    <div id="viewSplit" class="flex flex-wrap items-center justify-center gap-12 py-4">
+      
+      <!-- Phone 1: Customer View -->
+      <div class="flex flex-col items-center">
+        <div class="mb-3 flex items-center space-x-2">
+          <span class="w-3 h-3 rounded-full bg-[#00AA13] animate-pulse"></span>
+          <h3 class="text-sm font-extrabold text-slate-200">Aplikasi Pelanggan (Gojek)</h3>
+          <a href="/customer.html" target="_blank" title="Buka di Tab Baru" class="text-slate-400 hover:text-white text-xs">
+            <i class="ph-bold ph-arrow-square-out"></i>
+          </a>
+        </div>
+        <div class="phone-mockup">
+          <div class="phone-notch">
+            <div class="phone-camera"></div>
+          </div>
+          <iframe id="frameCustomer" src="/customer.html" class="w-full h-full border-none pt-2"></iframe>
+        </div>
+      </div>
+
+      <!-- Arrow Divider / Sync Indicator -->
+      <div class="hidden xl:flex flex-col items-center justify-center text-slate-500 space-y-2">
+        <div class="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-xl text-[#00AA13] shadow-lg">
+          <i class="ph-bold ph-arrows-left-right animate-pulse"></i>
+        </div>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Socket.IO Sync</span>
+      </div>
+
+      <!-- Phone 2: Driver View -->
+      <div class="flex flex-col items-center">
+        <div class="mb-3 flex items-center space-x-2">
+          <span class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></span>
+          <h3 class="text-sm font-extrabold text-slate-200">Aplikasi Pengemudi (GoPartner)</h3>
+          <a href="/driver.html" target="_blank" title="Buka di Tab Baru" class="text-slate-400 hover:text-white text-xs">
+            <i class="ph-bold ph-arrow-square-out"></i>
+          </a>
+        </div>
+        <div class="phone-mockup" style="box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 0 10px #090d16, 0 0 0 12px #1e293b;">
+          <div class="phone-notch" style="background: #090d16;">
+            <div class="phone-camera"></div>
+          </div>
+          <iframe id="frameDriver" src="/driver.html" class="w-full h-full border-none pt-2"></iframe>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- VIEW 2: Single Customer View -->
+    <div id="viewCustomerSingle" class="hidden w-full max-w-md mx-auto py-4">
+      <div class="phone-mockup mx-auto">
+        <div class="phone-notch"><div class="phone-camera"></div></div>
+        <iframe src="/customer.html" class="w-full h-full border-none pt-2"></iframe>
+      </div>
+    </div>
+
+    <!-- VIEW 3: Single Driver View -->
+    <div id="viewDriverSingle" class="hidden w-full max-w-md mx-auto py-4">
+      <div class="phone-mockup mx-auto" style="box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 0 10px #090d16, 0 0 0 12px #1e293b;">
+        <div class="phone-notch" style="background: #090d16;"><div class="phone-camera"></div></div>
+        <iframe src="/driver.html" class="w-full h-full border-none pt-2"></iframe>
+      </div>
+    </div>
+
+    <!-- VIEW 4: Admin Dispatch View -->
+    <div id="viewAdminSingle" class="hidden w-full h-[85vh] rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
+      <iframe src="/admin.html" class="w-full h-full border-none"></iframe>
+    </div>
+
+  </main>
+
+  <!-- Testing Guide Modal -->
+  <div id="guideModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-3xl p-6 shadow-2xl text-slate-100">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+        <div class="flex items-center space-x-2 text-yellow-400">
+          <i class="ph-bold ph-lightbulb-filament text-2xl"></i>
+          <h3 class="font-extrabold text-base text-white">Panduan Pengujian Sistem Gojek MVP</h3>
+        </div>
+        <button onclick="toggleGuideModal()" class="text-slate-400 hover:text-white">
+          <i class="ph-bold ph-x text-xl"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs text-slate-300 leading-relaxed">
+        <div class="flex items-start space-x-3 bg-slate-800/80 p-3 rounded-2xl border border-slate-700/60">
+          <div class="w-6 h-6 rounded-full bg-[#00AA13] text-white flex items-center justify-center font-bold flex-shrink-0">1</div>
+          <div>
+            <strong class="text-white block font-bold mb-0.5">Dual Simulator View (Layar Kiri & Kanan)</strong>
+            <span>Layar kiri adalah aplikasi Pelanggan, dan layar kanan adalah aplikasi Mitra Driver (Budi Santoso). Keduanya terkoneksi live melalui WebSockets.</span>
+          </div>
+        </div>
+
+        <div class="flex items-start space-x-3 bg-slate-800/80 p-3 rounded-2xl border border-slate-700/60">
+          <div class="w-6 h-6 rounded-full bg-[#00AA13] text-white flex items-center justify-center font-bold flex-shrink-0">2</div>
+          <div>
+            <strong class="text-white block font-bold mb-0.5">Membuat Pesanan (Layar Kiri)</strong>
+            <span>Pilih lokasi jemput & tujuan (misal: Monas ke Grand Indonesia), pilih <strong>GoRide</strong> atau <strong>GoCar</strong>, lalu klik <strong>"Pesan GoRide"</strong>. Layar kiri akan masuk ke status pencarian radar.</span>
+          </div>
+        </div>
+
+        <div class="flex items-start space-x-3 bg-slate-800/80 p-3 rounded-2xl border border-slate-700/60">
+          <div class="w-6 h-6 rounded-full bg-[#00AA13] text-white flex items-center justify-center font-bold flex-shrink-0">3</div>
+          <div>
+            <strong class="text-white block font-bold mb-0.5">Menerima Pesanan (Layar Kanan)</strong>
+            <span>Di aplikasi Driver akan muncul notifikasi order masuk bersuara radar dengan timer 15 detik. Klik tombol hijau <strong>"Terima Pesanan"</strong>.</span>
+          </div>
+        </div>
+
+        <div class="flex items-start space-x-3 bg-slate-800/80 p-3 rounded-2xl border border-slate-700/60">
+          <div class="w-6 h-6 rounded-full bg-[#00AA13] text-white flex items-center justify-center font-bold flex-shrink-0">4</div>
+          <div>
+            <strong class="text-white block font-bold mb-0.5">Simulasi Pergerakan GPS Realtime & Chat</strong>
+            <span>Klik <strong>"Mulai Jalankan Kendaraan Otomatis"</strong> di Driver. Posisi motor/mobil akan meluncur di peta menuju titik jemput. Layar Pelanggan akan melihat driver bergerak secara halus di petanya secara realtime! Anda juga bisa mencoba fitur chat dua arah.</span>
+          </div>
+        </div>
+
+        <div class="flex items-start space-x-3 bg-slate-800/80 p-3 rounded-2xl border border-slate-700/60">
+          <div class="w-6 h-6 rounded-full bg-[#00AA13] text-white flex items-center justify-center font-bold flex-shrink-0">5</div>
+          <div>
+            <strong class="text-white block font-bold mb-0.5">Selesaikan Pesanan & Settlement Pembayaran</strong>
+            <span>Klik "Sampai di Jemputan" ➔ "Mulai Antar" ➔ "Selesaikan Pesanan". Saldo GoPay pelanggan akan terpotong dan dompet driver bertambah!</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 pt-3 border-t border-slate-800 flex justify-end">
+        <button onclick="toggleGuideModal()" class="px-5 py-2 bg-[#00AA13] text-white font-bold rounded-xl text-xs hover:bg-[#008f10] transition">
+          Mengerti, Mari Coba!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchView(mode) {
+      document.getElementById('viewSplit').classList.add('hidden');
+      document.getElementById('viewCustomerSingle').classList.add('hidden');
+      document.getElementById('viewDriverSingle').classList.add('hidden');
+      document.getElementById('viewAdminSingle').classList.add('hidden');
+
+      const tabs = ['Split', 'Customer', 'Driver', 'Admin'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`btnTab${t}`);
+        btn.className = 'tab-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white transition flex items-center space-x-1.5';
+      });
+
+      if (mode === 'split') {
+        document.getElementById('viewSplit').classList.remove('hidden');
+        document.getElementById('btnTabSplit').className = 'tab-btn px-3.5 py-1.5 rounded-lg bg-[#00AA13] text-white transition flex items-center space-x-1.5 shadow';
+      } else if (mode === 'customer') {
+        document.getElementById('viewCustomerSingle').classList.remove('hidden');
+        document.getElementById('btnTabCustomer').className = 'tab-btn px-3.5 py-1.5 rounded-lg bg-[#00AA13] text-white transition flex items-center space-x-1.5 shadow';
+      } else if (mode === 'driver') {
+        document.getElementById('viewDriverSingle').classList.remove('hidden');
+        document.getElementById('btnTabDriver').className = 'tab-btn px-3.5 py-1.5 rounded-lg bg-[#00AA13] text-white transition flex items-center space-x-1.5 shadow';
+      } else if (mode === 'admin') {
+        document.getElementById('viewAdminSingle').classList.remove('hidden');
+        document.getElementById('btnTabAdmin').className = 'tab-btn px-3.5 py-1.5 rounded-lg bg-[#00AA13] text-white transition flex items-center space-x-1.5 shadow';
+      }
+    }
+
+    function toggleGuideModal() {
+      const modal = document.getElementById('guideModal');
+      modal.classList.toggle('hidden');
+    }
+  </script>
+</body>
+</html>
