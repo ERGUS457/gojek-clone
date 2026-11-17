@@ -126,3 +126,13 @@ const AudioFX = {
 };
 
 window.AudioFX = AudioFX;
+
+if (typeof document !== 'undefined') {
+  const unlockAudio = () => {
+    AudioFX.init();
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+  };
+  document.addEventListener('click', unlockAudio, { once: true });
+  document.addEventListener('touchstart', unlockAudio, { once: true });
+}

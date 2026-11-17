@@ -26,6 +26,39 @@ function initMap() {
   }).addTo(map);
 
   L.control.zoom({ position: 'topright' }).addTo(map);
+
+  let clickToggle = false;
+  map.on('click', (e) => {
+    if (activeOrder) return;
+    const { lat, lng } = e.latlng;
+    const customLoc = {
+      name: `Titik Peta (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+      address: 'Lokasi dipilih dari peta',
+      lat,
+      lng
+    };
+
+    if (clickToggle) {
+      const pEl = document.getElementById('pickupSelect');
+      const opt = document.createElement('option');
+      opt.value = 'custom_pickup';
+      opt.textContent = `📍 Jemput: ${customLoc.name}`;
+      opt.dataset.loc = JSON.stringify(customLoc);
+      opt.selected = true;
+      pEl.appendChild(opt);
+      clickToggle = false;
+    } else {
+      const dEl = document.getElementById('dropoffSelect');
+      const opt = document.createElement('option');
+      opt.value = 'custom_dropoff';
+      opt.textContent = `🎯 Tujuan: ${customLoc.name}`;
+      opt.dataset.loc = JSON.stringify(customLoc);
+      opt.selected = true;
+      dEl.appendChild(opt);
+      clickToggle = true;
+    }
+    updateMapRoute();
+  });
 }
 
 function populateLocations() {
@@ -51,12 +84,27 @@ function populateLocations() {
 }
 
 function getSelectedLocations() {
-  const pIdx = document.getElementById('pickupSelect').value;
-  const dIdx = document.getElementById('dropoffSelect').value;
-  return {
-    pickup: JAKARTA_LOCATIONS[pIdx] || JAKARTA_LOCATIONS[0],
-    dropoff: JAKARTA_LOCATIONS[dIdx] || JAKARTA_LOCATIONS[1]
-  };
+  const pEl = document.getElementById('pickupSelect');
+  const dEl = document.getElementById('dropoffSelect');
+
+  let pickup = null;
+  let dropoff = null;
+
+  const pSelected = pEl.options[pEl.selectedIndex];
+  if (pSelected && pSelected.dataset.loc) {
+    pickup = JSON.parse(pSelected.dataset.loc);
+  } else {
+    pickup = JAKARTA_LOCATIONS[pEl.value] || JAKARTA_LOCATIONS[0];
+  }
+
+  const dSelected = dEl.options[dEl.selectedIndex];
+  if (dSelected && dSelected.dataset.loc) {
+    dropoff = JSON.parse(dSelected.dataset.loc);
+  } else {
+    dropoff = JAKARTA_LOCATIONS[dEl.value] || JAKARTA_LOCATIONS[1];
+  }
+
+  return { pickup, dropoff };
 }
 
 function updateMapRoute() {
@@ -362,7 +410,11 @@ async function topUpPrompt() {
   }
 }
 
+let selectedTipAmount = 0;
+let completedOrderId = null;
+
 function selectTip(amount, btn) {
+  selectedTipAmount = amount;
   document.querySelectorAll('.tip-btn').forEach(b => {
     b.classList.remove('border-[#00AA13]', 'text-[#00AA13]', 'bg-green-50');
   });
@@ -370,7 +422,18 @@ function selectTip(amount, btn) {
   AudioFX.playCashRegister();
 }
 
-function closeCompletedModal() {
+async function closeCompletedModal() {
+  if (completedOrderId && selectedTipAmount > 0) {
+    try {
+      await fetch(`/api/orders/${completedOrderId}/rating`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: 5, tip: selectedTipAmount })
+      });
+    } catch (e) {}
+  }
+  selectedTipAmount = 0;
+  completedOrderId = null;
   document.getElementById('completedModal').classList.add('hidden');
   resetOrderUI();
   loadCustomer();
@@ -428,6 +491,7 @@ function onTripStarted() {
 }
 
 function onTripCompleted() {
+  completedOrderId = activeOrder ? activeOrder.id : null;
   AudioFX.playCashRegister();
   document.getElementById('completedModal').classList.remove('hidden');
 }

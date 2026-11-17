@@ -29,6 +29,19 @@ app.get('/api/status', async (req, res) => {
   }
 });
 
+// Pricing calculation
+app.post('/api/pricing/calculate', (req, res) => {
+  const { serviceType, distanceKm } = req.body;
+  const dist = Number(distanceKm) || 2;
+  const fare = store.calculateFare(serviceType || 'goride', dist);
+  res.json({
+    serviceType: serviceType || 'goride',
+    distanceKm: dist,
+    fare,
+    currency: 'IDR'
+  });
+});
+
 // Drivers endpoints
 app.get('/api/drivers', async (req, res) => {
   try {
@@ -96,7 +109,6 @@ app.get('/api/orders/:id', async (req, res) => {
     const order = await store.getOrderById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
     
-    // Also include assigned driver details if assigned
     let driver = null;
     if (order.assignedDriverId) {
       driver = await store.getDriverById(order.assignedDriverId);
@@ -148,6 +160,47 @@ app.post('/api/orders/:id/accept', async (req, res) => {
     const driver = await store.getDriverById(driverId);
 
     res.json({ success: true, order: updated, driver });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/orders/:id/reject', async (req, res) => {
+  try {
+    const { driverId } = req.body;
+    const order = await store.getOrderById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    if (driverId) {
+      await store.updateDriver(driverId, { status: 'IDLE' });
+    }
+
+    const offeredSet = new Set(order.offeredDriverIds || []);
+    if (driverId) offeredSet.add(driverId);
+
+    // Try finding next eligible driver
+    const eligible = await store.findEligibleDrivers(
+      order.serviceType,
+      order.pickup.lat,
+      order.pickup.lng
+    );
+    const nextCandidate = eligible.find(d => !offeredSet.has(d.id));
+
+    if (nextCandidate) {
+      offeredSet.add(nextCandidate.id);
+      await store.updateDriver(nextCandidate.id, { status: 'OFFERING' });
+      const updated = await store.updateOrder(req.params.id, {
+        status: 'OFFERED',
+        offeredDriverIds: Array.from(offeredSet)
+      });
+      return res.json({ success: true, status: 'REOFFERED', nextDriverId: nextCandidate.id, order: updated });
+    } else {
+      const updated = await store.updateOrder(req.params.id, {
+        status: 'NO_DRIVER',
+        offeredDriverIds: Array.from(offeredSet)
+      });
+      return res.json({ success: true, status: 'NO_DRIVER', order: updated });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -209,6 +262,30 @@ app.post('/api/orders/:id/cancel', async (req, res) => {
     }
 
     res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/orders/:id/rating', async (req, res) => {
+  try {
+    const { rating, tip } = req.body;
+    const order = await store.getOrderById(req.params.id);
+    if (!order || !order.assignedDriverId) return res.status(404).json({ error: 'Order or driver not found' });
+
+    const tipAmount = Number(tip) || 0;
+    if (tipAmount > 0) {
+      await store.updateCustomerGopay(order.customer.id || 'cust-demo', -tipAmount);
+      const driver = await store.getDriverById(order.assignedDriverId);
+      if (driver) {
+        await store.updateDriver(driver.id, {
+          walletBalance: (driver.walletBalance || 0) + tipAmount,
+          earningsToday: (driver.earningsToday || 0) + tipAmount
+        });
+      }
+    }
+
+    res.json({ success: true, message: 'Rating and tip submitted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

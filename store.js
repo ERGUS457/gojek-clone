@@ -134,6 +134,14 @@ class Store {
   resetSeedsLocal() {
     this.drivers = JSON.parse(JSON.stringify(INITIAL_DRIVERS));
     this.orders = [];
+    this.customers = {
+      'cust-demo': {
+        id: 'cust-demo',
+        name: 'Andi Pratama',
+        phone: '0812-9900-1122',
+        gopayBalance: 250000
+      }
+    };
     this.save();
   }
 
@@ -463,6 +471,7 @@ class Store {
         await db.pool.query('DELETE FROM chat_messages');
         await db.pool.query('DELETE FROM orders');
         await db.pool.query('DELETE FROM drivers');
+        await db.pool.query("UPDATE customers SET gopay_balance = 250000 WHERE id = 'cust-demo'");
         for (const d of db.SEED_DRIVERS) {
           await db.pool.query(`
             INSERT INTO drivers (
