@@ -43,6 +43,40 @@ app.post('/api/pricing/calculate', (req, res) => {
 });
 
 // Real Location Geocoding via OpenStreetMap Nominatim
+app.get('/api/locations/detect-ip', async (req, res) => {
+  try {
+    const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    const clientIp = rawIp.split(',')[0].trim();
+    
+    let url = 'http://ip-api.com/json/';
+    if (clientIp && !clientIp.startsWith('127.') && clientIp !== '::1' && !clientIp.startsWith('192.168.') && !clientIp.startsWith('10.')) {
+      url += clientIp;
+    }
+    
+    const resp = await fetch(url, { headers: { 'User-Agent': 'GojekCloneApp/1.0' } });
+    const data = await resp.json();
+    
+    if (data && data.status === 'success') {
+      return res.json({
+        city: data.city || 'Pontianak',
+        region: data.regionName || 'Kalimantan Barat',
+        lat: data.lat || -0.0297,
+        lng: data.lon || 109.3259,
+        ip: data.query
+      });
+    }
+  } catch (err) {
+    console.warn('IP detection error:', err.message);
+  }
+  
+  res.json({
+    city: 'Pontianak',
+    region: 'Kalimantan Barat',
+    lat: -0.0297,
+    lng: 109.3259
+  });
+});
+
 app.get('/api/locations/search', async (req, res) => {
   const query = req.query.q;
   if (!query || query.trim().length < 2) {

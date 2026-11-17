@@ -8,12 +8,15 @@ let orders = [];
 function initMap() {
   map = L.map('adminMap', {
     zoomControl: true
-  }).setView([-6.2088, 106.8456], 13);
+  }).setView([-0.0297, 109.3259], 13);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 19
   }).addTo(map);
+
+  setTimeout(() => { if (map) map.invalidateSize(); }, 250);
+  window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
 }
 
 function updateFleetMarkers() {

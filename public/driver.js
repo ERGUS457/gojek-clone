@@ -22,15 +22,18 @@ let driverPollInterval = null;
 const knownDriverMsgIds = new Set();
 
 function initMap() {
-  const defaultCenter = [-6.1754, 106.8272];
+  const defaultCenter = [-0.0297, 109.3259];
   map = L.map('driverMap', { zoomControl: false }).setView(defaultCenter, 14);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 19
   }).addTo(map);
 
   L.control.zoom({ position: 'topright' }).addTo(map);
+
+  setTimeout(() => { if (map) map.invalidateSize(); }, 250);
+  window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
 }
 
 async function loadDriverAccounts() {

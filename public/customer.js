@@ -17,15 +17,18 @@ const knownMessageIds = new Set();
 
 // Initialize Map
 function initMap() {
-  const defaultCenter = [-6.1954, 106.8218]; // Grand Indonesia
+  const defaultCenter = [-0.0297, 109.3259]; // Pontianak real center
   map = L.map('customerMap', { zoomControl: false }).setView(defaultCenter, 14);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 19
   }).addTo(map);
 
   L.control.zoom({ position: 'topright' }).addTo(map);
+
+  setTimeout(() => { if (map) map.invalidateSize(); }, 250);
+  window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
 
   let clickToggle = false;
   map.on('click', async (e) => {
@@ -756,6 +759,101 @@ function initSocket() {
   }
 }
 
+async function initRealLocation() {
+  try {
+    const res = await fetch('/api/locations/detect-ip');
+    let realLat = -0.0297;
+    let realLng = 109.3259;
+    let cityName = 'Pontianak';
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.lat && data.lng) {
+        realLat = data.lat;
+        realLng = data.lng;
+        cityName = data.city || 'Pontianak';
+      }
+    }
+
+    map.setView([realLat, realLng], 14);
+    setTimeout(() => { if (map) map.invalidateSize(); }, 300);
+
+    // Relocate fleet near user's real coordinate
+    try {
+      await fetch('/api/fleet/recenter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat: realLat, lng: realLng })
+      });
+      await loadDrivers();
+    } catch (e) {}
+
+    const pickupPlace = await fetchRealAddress(realLat, realLng);
+    const localPlaces = await searchRealAddress(cityName);
+
+    const validDests = (localPlaces && localPlaces.length > 1)
+      ? localPlaces.filter(p => calcDistance(realLat, realLng, p.lat, p.lng) > 0.4)
+      : [];
+
+    let dropoffPlace = validDests.length > 0 ? validDests[0] : await fetchRealAddress(realLat - 0.022, realLng + 0.018);
+
+    const pEl = document.getElementById('pickupSelect');
+    const dEl = document.getElementById('dropoffSelect');
+
+    pEl.innerHTML = '';
+    dEl.innerHTML = '';
+
+    const pOpt = document.createElement('option');
+    pOpt.value = 'real_init_pickup';
+    pOpt.textContent = `📍 ${pickupPlace.name}`;
+    pOpt.dataset.loc = JSON.stringify(pickupPlace);
+    pOpt.selected = true;
+    pEl.appendChild(pOpt);
+
+    const dOpt = document.createElement('option');
+    dOpt.value = 'real_init_dropoff';
+    dOpt.textContent = `🎯 ${dropoffPlace.name}`;
+    dOpt.dataset.loc = JSON.stringify(dropoffPlace);
+    dOpt.selected = true;
+    dEl.appendChild(dOpt);
+
+    if (localPlaces && localPlaces.length > 0) {
+      localPlaces.forEach((lp, idx) => {
+        const opt = document.createElement('option');
+        opt.value = `loc_${idx}`;
+        opt.textContent = `🎯 ${lp.name}`;
+        opt.dataset.loc = JSON.stringify(lp);
+        dEl.appendChild(opt);
+      });
+    }
+
+    updateMapRoute();
+
+    // Check high precision device GPS in background
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const gpsPlace = await fetchRealAddress(latitude, longitude);
+        pOpt.textContent = `📍 Lokasi GPS Saya: ${gpsPlace.name}`;
+        pOpt.dataset.loc = JSON.stringify(gpsPlace);
+        pOpt.selected = true;
+        map.setView([latitude, longitude], 15);
+        await fetch('/api/fleet/recenter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat: latitude, lng: longitude })
+        });
+        await loadDrivers();
+        updateMapRoute();
+        const gpsBtn = document.getElementById('gpsBtnText');
+        if (gpsBtn) gpsBtn.textContent = `✅ GPS: ${gpsPlace.name.slice(0, 18)}...`;
+      }, () => {}, { enableHighAccuracy: true, timeout: 8000 });
+    }
+  } catch (err) {
+    console.warn('Real location init error:', err);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
   populateLocations();
@@ -763,5 +861,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadCustomer();
   loadDrivers();
   initSocket();
+  initRealLocation();
   setInterval(loadDrivers, 5000);
 });
