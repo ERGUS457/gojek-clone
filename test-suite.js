@@ -180,6 +180,24 @@ async function runTests() {
     assert(cancelRes.status === 200, 'Order cancelled successfully');
     assert(cancelRes.body.status === 'CANCELLED', 'Order status marked as CANCELLED');
 
+    // 13. Security & Input Validation (Karpathy Guidelines & Security Audit)
+    console.log('\n13. Testing Security & Input Validation...');
+    const invalidTopup = await request('POST', '/api/customer/topup', { amount: -50000 });
+    assert(invalidTopup.status === 400, 'Negative topup rejected with 400 Bad Request');
+
+    const invalidOrder = await request('POST', '/api/orders', {
+      customer: { id: 'cust-demo' },
+      pickup: 'InvalidLocation',
+      dropoff: null
+    });
+    assert(invalidOrder.status === 400, 'Malformed order coordinates rejected with 400 Bad Request');
+
+    // 14. Official Digital E-Receipt Endpoint
+    console.log('\n14. Testing Digital E-Receipt Generation...');
+    const receiptRes = await request('GET', `/api/orders/${orderId}/receipt`);
+    assert(receiptRes.status === 200, 'GET /api/orders/:id/receipt returns 200 OK');
+    assert(typeof receiptRes.body === 'string' && receiptRes.body.includes('E-Receipt Resmi Perjalanan'), 'Receipt contains Gojek official header & details');
+
     // Summary
     console.log('\n===============================================');
     console.log(`  Tests Completed: ${passed + failed}`);

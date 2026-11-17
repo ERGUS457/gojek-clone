@@ -492,6 +492,10 @@ function onTripStarted() {
 
 function onTripCompleted() {
   completedOrderId = activeOrder ? activeOrder.id : null;
+  const receiptBtn = document.getElementById('downloadReceiptBtn');
+  if (receiptBtn && completedOrderId) {
+    receiptBtn.href = `/api/orders/${completedOrderId}/receipt`;
+  }
   AudioFX.playCashRegister();
   document.getElementById('completedModal').classList.remove('hidden');
 }

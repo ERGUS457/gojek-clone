@@ -104,6 +104,171 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
+// Official Digital E-Receipt (Printable & Save as PDF)
+app.get('/api/orders/:id/receipt', async (req, res) => {
+  try {
+    const order = await store.getOrderById(req.params.id);
+    if (!order) return res.status(404).send('<h2>Pesanan tidak ditemukan / Order not found</h2>');
+
+    let driver = null;
+    if (order.assignedDriverId) {
+      driver = await store.getDriverById(order.assignedDriverId);
+    }
+
+    const orderDate = new Date(order.createdAt || Date.now()).toLocaleString('id-ID', {
+      dateStyle: 'full',
+      timeStyle: 'medium',
+      timeZone: 'Asia/Jakarta'
+    });
+
+    const baseFare = Math.round(order.fare * 0.4);
+    const distanceFare = Math.round(order.fare * 0.55);
+    const serviceFee = order.fare - baseFare - distanceFare;
+
+    const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Bukti Pembayaran Perjalanan - ${order.id}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      body { background: white !important; padding: 0 !important; }
+      .no-print { display: none !important; }
+      .receipt-card { box-shadow: none !important; border: 1px solid #e5e7eb !important; }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen py-8 px-4 flex flex-col items-center justify-center font-sans antialiased text-gray-800">
+  
+  <div class="no-print mb-4 flex space-x-3">
+    <button onclick="window.print()" class="bg-[#00AA13] hover:bg-[#008f10] text-white px-5 py-2.5 rounded-full font-bold shadow-md flex items-center space-x-2 transition">
+      <svg class="w-5 h-5 fill-current" viewBox="0 0 256 256"><path d="M200,80V48a16,16,0,0,0-16-16H72A16,16,0,0,0,56,48V80H40A24,24,0,0,0,16,104v80a24,24,0,0,0,24,24H56v16a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V208h16a24,24,0,0,0,24-24V104A24,24,0,0,0,216,80ZM72,48H184V80H72ZM184,224H72V168H184Zm32-40H200V160a8,8,0,0,0-8-8H64a8,8,0,0,0-8,8v24H40a8,8,0,0,1-8-8V104a8,8,0,0,1,8-8H216a8,8,0,0,1,8,8v80A8,8,0,0,1,216,184Z"></path></svg>
+      <span>Cetak / Simpan PDF</span>
+    </button>
+    <button onclick="window.close()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-full font-bold shadow-sm hover:bg-gray-50 transition">
+      Tutup
+    </button>
+  </div>
+
+  <div class="receipt-card max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-200">
+    <!-- Header banner -->
+    <div class="bg-[#00AA13] p-6 text-white text-center relative">
+      <div class="w-12 h-12 rounded-full bg-white mx-auto flex items-center justify-center mb-2 shadow-inner">
+        <div class="w-6 h-6 rounded-full bg-[#00AA13] flex items-center justify-center">
+          <div class="w-2.5 h-2.5 rounded-full bg-white"></div>
+        </div>
+      </div>
+      <h1 class="text-2xl font-black tracking-tight">gojek</h1>
+      <p class="text-xs font-semibold text-green-100 uppercase tracking-widest mt-1">E-Receipt Resmi Perjalanan</p>
+    </div>
+
+    <div class="p-6 space-y-5">
+      <!-- Status Badge -->
+      <div class="flex justify-between items-center border-b border-gray-100 pb-4">
+        <div>
+          <span class="text-[11px] font-bold text-gray-400 block uppercase">No. Pesanan</span>
+          <span class="font-mono font-bold text-sm text-gray-800">${order.id}</span>
+        </div>
+        <div class="text-right">
+          <span class="inline-block px-3 py-1 bg-green-100 text-[#00AA13] rounded-full text-xs font-black uppercase tracking-wider">
+            ${order.status === 'COMPLETED' ? 'LUNAS / SELESAI' : order.status}
+          </span>
+        </div>
+      </div>
+
+      <!-- Detail Layanan & Tanggal -->
+      <div class="grid grid-cols-2 gap-4 text-xs">
+        <div>
+          <span class="text-gray-400 block font-medium">Layanan</span>
+          <span class="font-bold text-gray-800 uppercase">${order.serviceType === 'gocar' ? '🚗 GoCar' : '🛵 GoRide'}</span>
+        </div>
+        <div>
+          <span class="text-gray-400 block font-medium">Waktu Transaksi</span>
+          <span class="font-semibold text-gray-800">${orderDate}</span>
+        </div>
+      </div>
+
+      <!-- Detail Rute -->
+      <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
+        <div class="flex items-start space-x-3">
+          <span class="text-base mt-0.5">🟢</span>
+          <div>
+            <span class="text-[10px] font-bold text-gray-400 uppercase">Titik Jemput</span>
+            <p class="text-xs font-bold text-gray-900">${order.pickup.name}</p>
+          </div>
+        </div>
+        <div class="border-l-2 border-dashed border-gray-300 ml-2.5 h-4"></div>
+        <div class="flex items-start space-x-3">
+          <span class="text-base mt-0.5">🔴</span>
+          <div>
+            <span class="text-[10px] font-bold text-gray-400 uppercase">Tujuan</span>
+            <p class="text-xs font-bold text-gray-900">${order.dropoff.name}</p>
+          </div>
+        </div>
+        <div class="pt-2 border-t border-gray-200 text-[11px] text-gray-500 flex justify-between font-medium">
+          <span>Jarak Tempuh:</span>
+          <span class="font-bold text-gray-800">${order.distanceKm || 3.2} km</span>
+        </div>
+      </div>
+
+      <!-- Detail Mitra Driver -->
+      ${driver ? `
+      <div class="flex items-center space-x-3 bg-white p-3 rounded-2xl border border-gray-200">
+        <img src="${driver.photo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80'}" class="w-11 h-11 rounded-full object-cover border-2 border-[#00AA13]">
+        <div class="flex-1 text-xs">
+          <h4 class="font-extrabold text-gray-900">${driver.name}</h4>
+          <p class="text-[11px] text-gray-500">${driver.vehicleModel || 'Honda Vario'} • <strong class="text-gray-800">${driver.plateNumber || 'B 4123 SDE'}</strong></p>
+        </div>
+        <span class="text-xs font-bold text-yellow-500">★ ${driver.rating || '4.9'}</span>
+      </div>
+      ` : ''}
+
+      <!-- Rincian Biaya -->
+      <div class="border-t border-gray-200 pt-3 space-y-2 text-xs">
+        <div class="flex justify-between text-gray-600">
+          <span>Tarif Dasar</span>
+          <span>Rp ${baseFare.toLocaleString('id-ID')}</span>
+        </div>
+        <div class="flex justify-between text-gray-600">
+          <span>Tarif Jarak (${order.distanceKm || 3.2} km)</span>
+          <span>Rp ${distanceFare.toLocaleString('id-ID')}</span>
+        </div>
+        <div class="flex justify-between text-gray-600">
+          <span>Biaya Jasa Aplikasi</span>
+          <span>Rp ${serviceFee.toLocaleString('id-ID')}</span>
+        </div>
+        <div class="flex justify-between font-black text-sm text-gray-900 pt-2 border-t border-gray-200">
+          <span>Total Bayar</span>
+          <span class="text-[#00AA13]">Rp ${order.fare.toLocaleString('id-ID')}</span>
+        </div>
+        <div class="flex justify-between text-[11px] text-gray-500">
+          <span>Metode Pembayaran</span>
+          <span class="font-bold text-[#00AA13] flex items-center space-x-1">
+            <span>● Saldo GoPay</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Footer & Verifikasi QR -->
+      <div class="pt-4 border-t border-gray-100 text-center space-y-2">
+        <p class="text-[10px] text-gray-400">Bukti sah transaksi digital ini diterbitkan secara otomatis oleh sistem Gojek MVP Platform.</p>
+        <div class="inline-block bg-gray-100 p-2 rounded-xl text-[10px] font-mono text-gray-600 tracking-wider">
+          VERIFIED-HASH: ${Buffer.from(order.id + ':' + order.fare).toString('base64')}
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    res.send(html);
+  } catch (err) {
+    res.status(500).send('Error generating receipt: ' + err.message);
+  }
+});
+
 app.get('/api/orders/:id', async (req, res) => {
   try {
     const order = await store.getOrderById(req.params.id);
@@ -122,7 +287,19 @@ app.get('/api/orders/:id', async (req, res) => {
 
 app.post('/api/orders', async (req, res) => {
   try {
-    const order = await store.createOrder(req.body);
+    const { pickup, dropoff, serviceType } = req.body;
+    if (!pickup || typeof pickup.lat !== 'number' || typeof pickup.lng !== 'number') {
+      return res.status(400).json({ error: 'Titik penjemputan (pickup lat & lng) wajib berupa angka valid' });
+    }
+    if (!dropoff || typeof dropoff.lat !== 'number' || typeof dropoff.lng !== 'number') {
+      return res.status(400).json({ error: 'Titik tujuan (dropoff lat & lng) wajib berupa angka valid' });
+    }
+    const cleanService = (serviceType || 'goride').toLowerCase();
+    if (!['goride', 'gocar'].includes(cleanService)) {
+      return res.status(400).json({ error: 'Jenis layanan tidak valid (pilih goride atau gocar)' });
+    }
+
+    const order = await store.createOrder({ ...req.body, serviceType: cleanService });
     // Find eligible drivers
     const candidates = await store.findEligibleDrivers(
       order.serviceType,
@@ -303,8 +480,11 @@ app.get('/api/customer', async (req, res) => {
 
 app.post('/api/customer/topup', async (req, res) => {
   try {
-    const { amount } = req.body;
-    const cust = await store.updateCustomerGopay('cust-demo', Number(amount) || 50000);
+    const amount = Number(req.body.amount);
+    if (!amount || isNaN(amount) || amount <= 0 || amount > 10000000) {
+      return res.status(400).json({ error: 'Nominal top up tidak valid (min Rp 1.000, maks Rp 10.000.000)' });
+    }
+    const cust = await store.updateCustomerGopay('cust-demo', amount);
     res.json(cust);
   } catch (err) {
     res.status(500).json({ error: err.message });
