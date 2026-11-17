@@ -270,6 +270,33 @@ class Store {
       .map(item => item.driver);
   }
 
+  async recenterFleet(centerLat, centerLng) {
+    const lat = Number(centerLat);
+    const lng = Number(centerLng);
+    if (isNaN(lat) || isNaN(lng)) return this.getDrivers();
+
+    const offsets = [
+      { dLat: 0.0032, dLng: 0.0025 },
+      { dLat: -0.0041, dLng: 0.0038 },
+      { dLat: 0.0052, dLng: -0.0045 },
+      { dLat: -0.0028, dLng: -0.0039 },
+      { dLat: 0.0045, dLng: 0.0018 }
+    ];
+
+    for (let i = 0; i < this.drivers.length; i++) {
+      const d = this.drivers[i];
+      if (d.status === 'IDLE' || d.status === 'OFFLINE') {
+        const offset = offsets[i % offsets.length];
+        d.currentLocation = {
+          lat: parseFloat((lat + offset.dLat).toFixed(6)),
+          lng: parseFloat((lng + offset.dLng).toFixed(6))
+        };
+      }
+    }
+    this.save();
+    return this.drivers;
+  }
+
   async getOrders() {
     if (db.isNeonConnected()) {
       try {

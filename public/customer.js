@@ -28,37 +28,180 @@ function initMap() {
   L.control.zoom({ position: 'topright' }).addTo(map);
 
   let clickToggle = false;
-  map.on('click', (e) => {
+  map.on('click', async (e) => {
     if (activeOrder) return;
     const { lat, lng } = e.latlng;
-    const customLoc = {
-      name: `Titik Peta (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
-      address: 'Lokasi dipilih dari peta',
-      lat,
-      lng
-    };
+    
+    // Asynchronously resolve real street address from coordinates
+    const realPlace = await fetchRealAddress(lat, lng);
 
     if (clickToggle) {
       const pEl = document.getElementById('pickupSelect');
       const opt = document.createElement('option');
-      opt.value = 'custom_pickup';
-      opt.textContent = `📍 Jemput: ${customLoc.name}`;
-      opt.dataset.loc = JSON.stringify(customLoc);
+      opt.value = `click_pickup_${Date.now()}`;
+      opt.textContent = `📍 Jemput: ${realPlace.name}`;
+      opt.dataset.loc = JSON.stringify(realPlace);
       opt.selected = true;
       pEl.appendChild(opt);
+
+      // Recenter nearby fleet around clicked pickup
+      try {
+        await fetch('/api/fleet/recenter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat: realPlace.lat, lng: realPlace.lng })
+        });
+        await loadDrivers();
+      } catch (err) {}
+
       clickToggle = false;
     } else {
       const dEl = document.getElementById('dropoffSelect');
       const opt = document.createElement('option');
-      opt.value = 'custom_dropoff';
-      opt.textContent = `🎯 Tujuan: ${customLoc.name}`;
-      opt.dataset.loc = JSON.stringify(customLoc);
+      opt.value = `click_dropoff_${Date.now()}`;
+      opt.textContent = `🎯 Tujuan: ${realPlace.name}`;
+      opt.dataset.loc = JSON.stringify(realPlace);
       opt.selected = true;
       dEl.appendChild(opt);
       clickToggle = true;
     }
     updateMapRoute();
   });
+}
+
+let searchDebounceTimer = null;
+
+function toggleSearchInput(type) {
+  const box = document.getElementById(`${type}SearchBox`);
+  const select = document.getElementById(`${type}Select`);
+  if (!box) return;
+  if (box.classList.contains('hidden')) {
+    box.classList.remove('hidden');
+    select.classList.add('hidden');
+    const input = document.getElementById(`${type}SearchInput`);
+    if (input) {
+      input.focus();
+      if (input.value) debounceSearch(input.value, type);
+    }
+  } else {
+    box.classList.add('hidden');
+    select.classList.remove('hidden');
+  }
+}
+
+function debounceSearch(value, type) {
+  clearTimeout(searchDebounceTimer);
+  const resultsEl = document.getElementById(`${type}SearchResults`);
+  if (!resultsEl) return;
+
+  if (!value || value.trim().length < 2) {
+    resultsEl.classList.add('hidden');
+    resultsEl.innerHTML = '';
+    return;
+  }
+
+  resultsEl.classList.remove('hidden');
+  resultsEl.innerHTML = `<div class="p-2.5 text-gray-400 text-center font-medium">Mencari alamat asli via OpenStreetMap...</div>`;
+
+  searchDebounceTimer = setTimeout(async () => {
+    try {
+      const places = await searchRealAddress(value);
+      if (!places || places.length === 0) {
+        resultsEl.innerHTML = `<div class="p-2.5 text-gray-400 text-center font-medium">Alamat tidak ditemukan</div>`;
+        return;
+      }
+      resultsEl.innerHTML = places.map((p, idx) => `
+        <div onclick='selectRealPlace(${JSON.stringify(p).replace(/'/g, "&#39;")}, "${type}")' class="p-2.5 hover:bg-green-50 cursor-pointer transition">
+          <div class="font-bold text-gray-900">${p.name}</div>
+          <div class="text-[10px] text-gray-500 truncate">${p.address}</div>
+        </div>
+      `).join('');
+    } catch (e) {
+      resultsEl.innerHTML = `<div class="p-2.5 text-red-500 text-center font-medium">Gagal mencari alamat</div>`;
+    }
+  }, 350);
+}
+
+async function selectRealPlace(place, type) {
+  const selectEl = document.getElementById(`${type}Select`);
+  const box = document.getElementById(`${type}SearchBox`);
+  const resultsEl = document.getElementById(`${type}SearchResults`);
+  
+  if (box) box.classList.add('hidden');
+  if (resultsEl) resultsEl.classList.add('hidden');
+  if (selectEl) selectEl.classList.remove('hidden');
+
+  const opt = document.createElement('option');
+  opt.value = `real_${type}_${Date.now()}`;
+  opt.textContent = `${type === 'pickup' ? '📍' : '🎯'} ${place.name}`;
+  opt.dataset.loc = JSON.stringify(place);
+  opt.selected = true;
+  selectEl.appendChild(opt);
+
+  if (type === 'pickup') {
+    try {
+      await fetch('/api/fleet/recenter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat: place.lat, lng: place.lng })
+      });
+      await loadDrivers();
+    } catch (e) {
+      console.warn('Fleet recenter error:', e);
+    }
+  }
+
+  updateMapRoute();
+}
+
+async function useCurrentDeviceLocation() {
+  const btnText = document.getElementById('gpsBtnText');
+  if (!navigator.geolocation) {
+    alert('Browser Anda tidak mendukung geolokasi GPS.');
+    return;
+  }
+
+  if (btnText) btnText.textContent = '⏳ Mengambil GPS Asli...';
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      try {
+        if (btnText) btnText.textContent = '🔍 Mencari Nama Jalan...';
+        const realPlace = await fetchRealAddress(latitude, longitude);
+        
+        const pickupEl = document.getElementById('pickupSelect');
+        const opt = document.createElement('option');
+        opt.value = `gps_pickup_${Date.now()}`;
+        opt.textContent = `📍 Lokasi Saya: ${realPlace.name}`;
+        opt.dataset.loc = JSON.stringify(realPlace);
+        opt.selected = true;
+        pickupEl.appendChild(opt);
+
+        // Recenter fleet around user's real device location
+        await fetch('/api/fleet/recenter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat: latitude, lng: longitude })
+        });
+        await loadDrivers();
+
+        map.setView([latitude, longitude], 15);
+        updateMapRoute();
+
+        if (btnText) btnText.textContent = `✅ ${realPlace.name.slice(0, 18)}...`;
+      } catch (err) {
+        console.error('Error handling GPS location:', err);
+        if (btnText) btnText.textContent = '⚠️ Gagal Mendapat Alamat';
+      }
+    },
+    (err) => {
+      console.warn('Geolocation denied or failed:', err.message);
+      alert('Izin lokasi GPS belum diaktifkan di browser. Silakan aktifkan izin lokasi di browser Anda.');
+      if (btnText) btnText.textContent = '📍 Gunakan Lokasi GPS Asli Saya';
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
 }
 
 function populateLocations() {

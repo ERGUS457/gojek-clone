@@ -93,7 +93,40 @@ function generateRouteSteps(start, end, numSteps = 25) {
   return steps;
 }
 
+// Fetch real address from coordinates via backend reverse geocoder
+async function fetchRealAddress(lat, lng) {
+  try {
+    const res = await fetch(`/api/locations/reverse?lat=${lat}&lng=${lng}`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn('Reverse geocoding error:', e);
+  }
+  return {
+    name: `Titik GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+    address: 'Koordinat GPS Terpilih',
+    lat,
+    lng
+  };
+}
+
+// Search real address by query string via backend geocoder
+async function searchRealAddress(query) {
+  try {
+    const res = await fetch(`/api/locations/search?q=${encodeURIComponent(query)}`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn('Geocoding search error:', e);
+  }
+  return [];
+}
+
 window.JAKARTA_LOCATIONS = JAKARTA_LOCATIONS;
 window.formatRupiah = formatRupiah;
 window.calcDistance = calcDistance;
 window.generateRouteSteps = generateRouteSteps;
+window.fetchRealAddress = fetchRealAddress;
+window.searchRealAddress = searchRealAddress;

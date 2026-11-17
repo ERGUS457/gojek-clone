@@ -80,27 +80,72 @@
 
       <!-- State 1: Location Picker & Service Selection -->
       <div id="viewStepOrder">
+        <!-- Live GPS & Real Search Banner -->
+        <div class="flex items-center justify-between mb-2.5">
+          <button type="button" onclick="useCurrentDeviceLocation()" class="flex items-center space-x-1.5 bg-green-50 border border-[#00AA13]/40 text-[#00AA13] px-3 py-1.5 rounded-full text-[11px] font-extrabold hover:bg-green-100 active:scale-95 transition shadow-sm">
+            <i class="ph-bold ph-crosshair text-sm animate-pulse text-[#00AA13]"></i>
+            <span id="gpsBtnText">📍 Gunakan Lokasi GPS Asli Saya</span>
+          </button>
+          <span class="text-[10px] text-gray-500 font-medium">Klik peta / cari alamat asli</span>
+        </div>
+
         <!-- Route Pickers -->
         <div class="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2 mb-3">
           <!-- Pickup -->
-          <div class="flex items-center space-x-3">
-            <div class="w-3 h-3 rounded-full bg-[#00AA13] flex-shrink-0"></div>
-            <div class="flex-1">
-              <label class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider block">Lokasi Jemput</label>
-              <select id="pickupSelect" class="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none truncate" onchange="onLocationChanged()">
-                <!-- Populated dynamically -->
-              </select>
+          <div>
+            <div class="flex items-center space-x-3">
+              <div class="w-3 h-3 rounded-full bg-[#00AA13] flex-shrink-0"></div>
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <label class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider block">Titik Jemput</label>
+                  <button type="button" onclick="toggleSearchInput('pickup')" class="text-[10px] text-[#00AA13] font-bold hover:underline flex items-center space-x-0.5">
+                    <i class="ph-bold ph-magnifying-glass"></i>
+                    <span>Cari Alamat Asli</span>
+                  </button>
+                </div>
+                <div class="relative">
+                  <select id="pickupSelect" class="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none truncate" onchange="onLocationChanged()">
+                    <!-- Populated dynamically -->
+                  </select>
+                  <div id="pickupSearchBox" class="hidden relative mt-1">
+                    <div class="flex items-center space-x-1">
+                      <input type="text" id="pickupSearchInput" placeholder="Ketik nama jalan / gedung asli..." class="flex-1 bg-white border border-[#00AA13] text-xs font-medium px-3 py-1.5 rounded-lg outline-none shadow-sm" oninput="debounceSearch(this.value, 'pickup')">
+                      <button type="button" onclick="toggleSearchInput('pickup')" class="text-xs text-gray-400 hover:text-gray-700 px-1">✕</button>
+                    </div>
+                    <div id="pickupSearchResults" class="hidden absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto z-50 text-xs mt-1 divide-y divide-gray-100"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+
           <div class="border-t border-gray-200 pl-6"></div>
+
           <!-- Destination -->
-          <div class="flex items-center space-x-3">
-            <div class="w-3 h-3 rounded-full bg-[#EE2737] flex-shrink-0"></div>
-            <div class="flex-1">
-              <label class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider block">Lokasi Tujuan</label>
-              <select id="dropoffSelect" class="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none truncate" onchange="onLocationChanged()">
-                <!-- Populated dynamically -->
-              </select>
+          <div>
+            <div class="flex items-center space-x-3">
+              <div class="w-3 h-3 rounded-full bg-[#EE2737] flex-shrink-0"></div>
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <label class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider block">Titik Tujuan</label>
+                  <button type="button" onclick="toggleSearchInput('dropoff')" class="text-[10px] text-[#00AA13] font-bold hover:underline flex items-center space-x-0.5">
+                    <i class="ph-bold ph-magnifying-glass"></i>
+                    <span>Cari Alamat Asli</span>
+                  </button>
+                </div>
+                <div class="relative">
+                  <select id="dropoffSelect" class="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none truncate" onchange="onLocationChanged()">
+                    <!-- Populated dynamically -->
+                  </select>
+                  <div id="dropoffSearchBox" class="hidden relative mt-1">
+                    <div class="flex items-center space-x-1">
+                      <input type="text" id="dropoffSearchInput" placeholder="Ketik tujuan asli (mall, stasiun, jalan)..." class="flex-1 bg-white border border-[#EE2737] text-xs font-medium px-3 py-1.5 rounded-lg outline-none shadow-sm" oninput="debounceSearch(this.value, 'dropoff')">
+                      <button type="button" onclick="toggleSearchInput('dropoff')" class="text-xs text-gray-400 hover:text-gray-700 px-1">✕</button>
+                    </div>
+                    <div id="dropoffSearchResults" class="hidden absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto z-50 text-xs mt-1 divide-y divide-gray-100"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -198,6 +198,12 @@ async function runTests() {
     assert(receiptRes.status === 200, 'GET /api/orders/:id/receipt returns 200 OK');
     assert(typeof receiptRes.body === 'string' && receiptRes.body.includes('E-Receipt Resmi Perjalanan'), 'Receipt contains Gojek official header & details');
 
+    // 15. Real Location Data & Fleet Recenter
+    console.log('\n15. Testing Real Location Geocoding & Fleet Recenter...');
+    const recenterRes = await request('POST', '/api/fleet/recenter', { lat: -0.0263, lng: 109.3425 }); // Pontianak/Sambas region
+    assert(recenterRes.status === 200, 'POST /api/fleet/recenter returns 200 OK');
+    assert(recenterRes.body.drivers.length > 0, 'Drivers dynamically relocated around real coordinate');
+
     // Summary
     console.log('\n===============================================');
     console.log(`  Tests Completed: ${passed + failed}`);

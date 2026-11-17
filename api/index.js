@@ -42,6 +42,61 @@ app.post('/api/pricing/calculate', (req, res) => {
   });
 });
 
+// Real Location Geocoding via OpenStreetMap Nominatim
+app.get('/api/locations/search', async (req, res) => {
+  const query = req.query.q;
+  if (!query || query.trim().length < 2) {
+    return res.json([]);
+  }
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&limit=8&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'GojekCloneApp/1.0 (contact: support@gojek-clone.local)' }
+    });
+    const data = await response.json();
+    const formatted = data.map(item => ({
+      name: item.name || item.display_name.split(',')[0],
+      address: item.display_name,
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon)
+    }));
+    res.json(formatted);
+  } catch (err) {
+    res.status(500).json({ error: 'Geocoding search failed: ' + err.message });
+  }
+});
+
+app.get('/api/locations/reverse', async (req, res) => {
+  const { lat, lng } = req.query;
+  if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'GojekCloneApp/1.0 (contact: support@gojek-clone.local)' }
+    });
+    const data = await response.json();
+    res.json({
+      name: data.name || (data.address ? (data.address.road || data.address.suburb || data.address.city || data.display_name.split(',')[0]) : 'Lokasi Terpilih'),
+      address: data.display_name || `${lat}, ${lng}`,
+      lat: parseFloat(lat),
+      lng: parseFloat(lng)
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Reverse geocoding failed: ' + err.message });
+  }
+});
+
+app.post('/api/fleet/recenter', async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
+    if (!lat || !lng) return res.status(400).json({ error: 'lat and lng are required' });
+    const updatedDrivers = await store.recenterFleet(lat, lng);
+    res.json({ success: true, drivers: updatedDrivers });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Drivers endpoints
 app.get('/api/drivers', async (req, res) => {
   try {
